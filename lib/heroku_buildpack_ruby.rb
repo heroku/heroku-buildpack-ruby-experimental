@@ -39,6 +39,39 @@ module HerokuBuildpackRuby
   EnvProxy.register_layer(:bundler, build: true, cache: false, launch: true)
   EnvProxy.register_layer(:ruby,    build: true, cache: false, launch: true)
 
+
+  class SetDefaultEnvVars
+    RACK_ENV = EnvProxy.default("RAILS_ENV")
+    RAILS_ENV = EnvProxy.default("RAILS_ENV")
+    JRUBY_OPTS = EnvProxy.default("JRUBY_OPTS")
+
+    DISABLE_SPRING_ENV = EnvProxy.default("DISABLE_SPRING")
+    SECRET_KEY_BASE_ENV = EnvProxy.default("SECRET_KEY_BASE")
+    MALLOC_ARENA_MAX_ENV = EnvProxy.default("MALLOC_ARENA_MAX")
+
+    RAILS_LOG_TO_STDOUT_ENV = EnvProxy.default("RAILS_LOG_TO_STDOUT")
+    RAILS_SERVE_STATIC_FILES_ENV = EnvProxy.default("RAILS_SERVE_STATIC_FILES")
+
+    private; attr_reader :environment; public
+
+    def initialize(environment:)
+      @environment = environment
+    end
+
+    def call
+      RACK_ENV.set_default(ruby: environment)
+      RAILS_ENV.set_default(ruby: environment)
+      JRUBY_OPTS.set_default(ruby: "-Xcompile.invokedynamic=false")
+
+      DISABLE_SPRING_ENV.set_default(ruby: "1")
+      # SECRET_KEY_BASE_ENV.set_default(ruby: "") # TODO: Persist secret key base value
+      MALLOC_ARENA_MAX_ENV.set_default(ruby: "2")
+
+      RAILS_LOG_TO_STDOUT_ENV.set_default(ruby: "enabled")
+      RAILS_SERVE_STATIC_FILES_ENV.set_default(ruby: "enabled")
+    end
+  end
+
   def self.compile_legacy(build_dir: , cache_dir:, env_dir: , buildpack_ruby_path:)
     app_dir = Pathname(build_dir)
     UserEnv.parse(env_dir)
@@ -67,6 +100,10 @@ module HerokuBuildpackRuby
         ruby_install_dir: ruby_install_dir,
         bundler_install_dir: bundler_install_dir,
         buildpack_ruby_path: buildpack_ruby_path,
+      ).call
+
+      SetDefaultEnvVars.new(
+        environment: "production"
       ).call
 
       gems_cache_copy.call do |gems_dir|
@@ -136,6 +173,11 @@ module HerokuBuildpackRuby
         ruby_install_dir: ruby_install_dir,
         bundler_install_dir: bundler_install_dir,
         buildpack_ruby_path: buildpack_ruby_path,
+      ).call
+
+
+      SetDefaultEnvVars.new(
+        environment: "production"
       ).call
 
       BundleInstall.new(

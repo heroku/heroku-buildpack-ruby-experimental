@@ -50,6 +50,11 @@ module HerokuBuildpackRuby
       Hatchet::Runner.new("ruby-getting-started").deploy do |app|
         # TODO: Remove asset fragment cache before runtime for reduced slug size
         # expect(app.run("ls tmp/cache/assets")).to_not match("sprockets")
+
+        app.run_multi("rails runner 'puts ENV[%Q{RAILS_SERVE_STATIC_FILES}].present?'") do |out, status|
+          expect(out).to match(/true/)
+          expect(status).to be_truthy
+        end
       end
     end
 
